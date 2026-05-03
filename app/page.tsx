@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Nav } from "@/components/Nav";
+import { KidIllustration } from "@/components/KidIllustration";
 
 const STEPS = [
   {
@@ -68,18 +69,33 @@ export default function Home() {
           <br />
           <span className="text-zinc-500">one Shakespeare-flavored step at a time.</span>
         </h1>
-        <p className="text-lg text-zinc-700 mb-6 leading-relaxed">
-          We trained a tiny language model on the complete works of Shakespeare.
-          825,000 weights. Saved to a 4&nbsp;MB file. Same architecture as GPT-4,
-          just smaller.
-        </p>
-        <p className="text-lg text-zinc-700 mb-12 leading-relaxed">
-          This walkthrough is the actual journey we took to build it — every
-          step, every snippet of code from{" "}
-          <code className="text-base bg-zinc-100 px-1.5 py-0.5 rounded">train.py</code>,
-          every formula, the real numbers that came out. If you follow along,
-          you&apos;ll be able to train your own.
-        </p>
+
+        <div className="grid md:grid-cols-[1fr_220px] gap-8 items-start mb-10">
+          <div className="space-y-5">
+            <p className="text-lg text-zinc-700 leading-relaxed">
+              We trained a tiny language model on the complete works of
+              Shakespeare. 825,000 weights, saved to a 4&nbsp;MB file, same
+              architecture as GPT-4 — just smaller.
+            </p>
+            <p className="text-lg text-zinc-700 leading-relaxed">
+              We&apos;re going to call it{" "}
+              <strong>the kid</strong>. It shows up empty-headed — every
+              weight a random number — and we hand it 5,000 batches of
+              Shakespeare, one tiny correction at a time, until it learns to
+              write the stuff itself. The file we save at the end is named{" "}
+              <code className="text-base bg-zinc-100 px-1.5 py-0.5 rounded">kid.pt</code>{" "}
+              for a reason.
+            </p>
+            <p className="text-lg text-zinc-700 leading-relaxed">
+              This walkthrough is the actual journey we took to raise it — every
+              step, every snippet of code from{" "}
+              <code className="text-base bg-zinc-100 px-1.5 py-0.5 rounded">train.py</code>,
+              every formula, the real numbers that came out. If you follow
+              along, you&apos;ll be able to train your own.
+            </p>
+          </div>
+          <KidIllustration className="w-full max-w-[220px] mx-auto md:mx-0" />
+        </div>
 
         <div className="space-y-3">
           {STEPS.map((s) => (
