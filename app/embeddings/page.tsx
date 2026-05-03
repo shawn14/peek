@@ -207,7 +207,7 @@ function Profile({
         ))}
       </div>
 
-      <div className="flex items-end h-32 gap-[1px] border-t border-b border-zinc-100 relative">
+      <div className="flex items-stretch h-32 gap-[1px] border-t border-b border-zinc-100 relative">
         <div className="absolute left-0 right-0 top-1/2 border-t border-zinc-200" />
         {profile.map((v, i) => {
           const h = (Math.abs(v) / max) * 50;
