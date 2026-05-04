@@ -125,7 +125,7 @@ export default function Home() {
 
         <p className="mt-12 text-sm text-zinc-500">
           The model in this site has 825,000 parameters. GPT-4 is rumored to have
-          ~1.8 trillion. Same playbook — same nine steps — at very different scale.
+          ~1.8 trillion. Same playbook — same ten steps — at very different scale.
         </p>
       </main>
     </>
