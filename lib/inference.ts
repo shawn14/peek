@@ -256,6 +256,20 @@ export function forward(weights: Weights, ids: number[]): Float32Array {
  *   - Stay numerically stable. The softmax helper already handles that.
  */
 export function sample(logits: Float32Array, temperature: number): number {
-  // TODO: USER WRITES THIS — see hints above.
-  throw new Error("sample() not implemented");
+  if (temperature === 0) {
+    let maxI = 0, maxV = -Infinity;
+    for (let i = 0; i < logits.length; i++) {
+      if (logits[i] > maxV) { maxV = logits[i]; maxI = i; }
+    }
+    return maxI;
+  }
+  const scaled = new Float32Array(logits.length);
+  for (let i = 0; i < logits.length; i++) scaled[i] = logits[i] / temperature;
+  const probs = softmax(scaled, 1, scaled.length);
+  let r = Math.random();
+  for (let i = 0; i < probs.length; i++) {
+    r -= probs[i];
+    if (r <= 0) return i;
+  }
+  return probs.length - 1;
 }
