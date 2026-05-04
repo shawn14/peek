@@ -12,6 +12,7 @@ const CHAPTERS = [
   { href: "/training", label: "training" },
   { href: "/process", label: "process" },
   { href: "/playground", label: "playground" },
+  { href: "/atlas", label: "atlas" },
 ];
 
 export function Nav() {
