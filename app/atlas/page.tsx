@@ -76,15 +76,16 @@ function prng(i: number, seed: number) {
 }
 
 function LogitBars({ count, seed }: { count: number; seed: number }) {
+  // 65 bars need to fit in the 120px left column. Use thin bars + tight gap.
   return (
-    <div className="flex items-end gap-[2px] h-12">
+    <div className="flex items-end h-12 max-w-[120px] overflow-hidden">
       {Array.from({ length: count }).map((_, i) => {
         const h = 6 + prng(i, seed) * 38; // 6..44 px
         return (
           <span
             key={i}
-            className="inline-block w-[3px] bg-zinc-400 rounded-sm"
-            style={{ height: `${h}px` }}
+            className="inline-block bg-zinc-400 rounded-sm mr-px"
+            style={{ width: "1.5px", height: `${h}px` }}
           />
         );
       })}
@@ -100,14 +101,14 @@ function ProbBars({ count, seed }: { count: number; seed: number }) {
   const norm = scores.map((s) => s / total);
   const max = Math.max(...norm);
   return (
-    <div className="flex items-end gap-[2px] h-12">
+    <div className="flex items-end h-12 max-w-[120px] overflow-hidden">
       {norm.map((p, i) => {
         const h = 2 + (p / max) * 42; // 2..44 px
         return (
           <span
             key={i}
-            className="inline-block w-[3px] bg-emerald-400 rounded-sm"
-            style={{ height: `${h}px` }}
+            className="inline-block bg-emerald-400 rounded-sm mr-px"
+            style={{ width: "1.5px", height: `${h}px` }}
           />
         );
       })}
