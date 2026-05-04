@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { ChapterHeader } from "@/components/ChapterHeader";
 import { Code } from "@/components/Code";
@@ -189,6 +190,25 @@ export default function BlockPage() {
           majority of parameters live in the FFN&apos;s 128 → 512 → 128
           weight matrices. Real LLMs scale by adding more blocks and growing
           the embedding dimension; the basic pattern stays the same.
+        </div>
+
+        <div className="mt-6 p-4 rounded-lg bg-blue-50 border border-blue-200 text-sm text-zinc-800 leading-relaxed">
+          <strong>Next: stages 5–7 — final output.</strong>{" "}
+          After the 4 blocks finish, the last position has a 128-number
+          vector that&apos;s been reshaped by attention and MLPs to encode
+          &ldquo;what comes next here.&rdquo; The model still has to (5)
+          stabilize that vector with a final LayerNorm, (6) project it
+          through <code className="bg-white px-1 rounded border border-blue-200">lm_head</code>{" "}
+          into 65 scores — one per possible next character — (7) softmax
+          those into probabilities, and finally <em>pick</em> one. That&apos;s {" "}
+          <Link href="/prediction" className="underline underline-offset-2 hover:text-zinc-900">
+            prediction
+          </Link>
+          . The whole flow: {" "}
+          <Link href="/atlas" className="underline underline-offset-2 hover:text-zinc-900">
+            atlas
+          </Link>
+          .
         </div>
 
         <NextChapter

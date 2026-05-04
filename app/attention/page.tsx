@@ -1,5 +1,6 @@
 "use client";
 import { Fragment, useEffect, useState } from "react";
+import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { ChapterHeader } from "@/components/ChapterHeader";
 import { Code } from "@/components/Code";
@@ -271,6 +272,22 @@ export default function AttentionPage() {
           on those signals and attend in stranger, more diffuse ways. The
           kid invented every one of these patterns from scratch by getting
           better at predicting Shakespeare.
+        </div>
+
+        <div className="mt-6 p-4 rounded-lg bg-blue-50 border border-blue-200 text-sm text-zinc-800 leading-relaxed">
+          <strong>Next: still stage 4 — wrapping attention into a block.</strong>{" "}
+          A single attention head isn&apos;t enough on its own. The model
+          wraps it (with residual connections, two LayerNorms, and a small
+          2-layer MLP) into a &ldquo;transformer block,&rdquo; and stacks
+          four of those blocks one after another. That&apos;s {" "}
+          <Link href="/block" className="underline underline-offset-2 hover:text-zinc-900">
+            block
+          </Link>
+          . The whole flow: {" "}
+          <Link href="/atlas" className="underline underline-offset-2 hover:text-zinc-900">
+            atlas
+          </Link>
+          .
         </div>
 
         <NextChapter

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { ChapterHeader } from "@/components/ChapterHeader";
 import { Code } from "@/components/Code";
@@ -147,6 +148,24 @@ export default function EmbeddingsPage() {
           consonant&quot; or &quot;does this start a proper noun&quot; or
           something we can&apos;t name. But whatever the kid invented, it was
           useful enough to bring the loss from 4.33 down to 1.48.
+        </div>
+
+        <div className="mt-6 p-4 rounded-lg bg-blue-50 border border-blue-200 text-sm text-zinc-800 leading-relaxed">
+          <strong>Next: still stage 3 — but for position.</strong>{" "}
+          Each character now has a meaning vector. But the model can&apos;t
+          tell <em>where</em> in the sequence each character sits — an
+          &quot;E&quot; at the start of a line should mean something different
+          from an &quot;E&quot; five chars in, and right now they&apos;d be
+          identical. The next page adds a second vector per slot that says
+          &quot;this is position 0, this is position 1…&quot; That&apos;s {" "}
+          <Link href="/position" className="underline underline-offset-2 hover:text-zinc-900">
+            position
+          </Link>
+          . The whole flow: {" "}
+          <Link href="/atlas" className="underline underline-offset-2 hover:text-zinc-900">
+            atlas
+          </Link>
+          .
         </div>
 
         <NextChapter

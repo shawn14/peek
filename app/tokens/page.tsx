@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { ChapterHeader } from "@/components/ChapterHeader";
 import { Code } from "@/components/Code";
@@ -151,6 +152,22 @@ decode = lambda ids: "".join(itos[i] for i in ids)`}
           characters each. Same idea, different granularity. Character-level
           keeps the vocab tiny so we can show every weight on a single
           screen.
+        </div>
+
+        <div className="mt-6 p-4 rounded-lg bg-blue-50 border border-blue-200 text-sm text-zinc-800 leading-relaxed">
+          <strong>Next: stage 3 — embed.</strong>{" "}
+          Now that every character is an integer ID, the model can&apos;t do
+          anything useful with it yet. An ID like <code className="bg-white px-1 rounded border border-blue-200">17</code> is
+          just a label. The next step turns each ID into a 128-number{" "}
+          <em>meaning vector</em> the model can actually do math on. That&apos;s {" "}
+          <Link href="/embeddings" className="underline underline-offset-2 hover:text-zinc-900">
+            embeddings
+          </Link>
+          . The whole flow: {" "}
+          <Link href="/atlas" className="underline underline-offset-2 hover:text-zinc-900">
+            atlas
+          </Link>
+          .
         </div>
 
         <NextChapter
