@@ -146,15 +146,13 @@ open http://localhost:3000`}
 
         <h2 className="text-xl font-bold mt-12 mb-3">What&apos;s next</h2>
         <p className="text-zinc-700 leading-relaxed mb-3">
-          A few directions this could grow:
+          We shipped one — try the{" "}
+          <Link href="/playground" className="underline underline-offset-4">
+            playground
+          </Link>
+          . A few more directions this could grow:
         </p>
         <ul className="space-y-2 text-zinc-700 leading-relaxed list-disc pl-6">
-          <li>
-            <strong>Live inference in the browser.</strong> The 825K weights
-            already ship as JSON. A few hundred lines of TypeScript would let
-            people type any prompt and watch the model respond — locally, no
-            server.
-          </li>
           <li>
             <strong>Watch a single weight learn.</strong> Save not just text
             samples at each checkpoint but a single weight value. Animate

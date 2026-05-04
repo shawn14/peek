@@ -57,6 +57,12 @@ const STEPS = [
     title: "Behind the scenes",
     body: "How we built this — the one-file training script, the 4 MB saved model, what surprised us, and how to run it yourself.",
   },
+  {
+    n: 10,
+    href: "/playground",
+    title: "Now you try",
+    body: "Everything you've read, running in your browser. Type a prompt, slide the temperature, watch the kid write you something. The model is loaded into your tab; nothing is sent to a server.",
+  },
 ];
 
 export default function Home() {
