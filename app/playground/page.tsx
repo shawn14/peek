@@ -223,6 +223,51 @@ export default function PlaygroundPage() {
             {lastTopK && (
               <details className="mt-4 rounded-xl border border-zinc-200 bg-white p-4">
                 <summary className="cursor-pointer text-sm font-medium text-zinc-700">
+                  Why does this look weird?
+                </summary>
+                <p className="mt-2 text-sm text-zinc-600 leading-relaxed">
+                  The kid is small. 825,000 weights — about <strong>2 million times less brain</strong> than GPT-4.
+                  It saw 1 MB of Shakespeare; GPT-4 saw trillions of tokens of internet.
+                </p>
+                <p className="mt-3 text-sm text-zinc-600 leading-relaxed">
+                  What it learned anyway:
+                </p>
+                <ul className="mt-1 space-y-1 text-sm text-zinc-600 list-disc pl-5">
+                  <li>
+                    <strong>Shape.</strong> Character labels in caps with colons. Verse line lengths.
+                    Apostrophe contractions like <code className="bg-zinc-100 px-1 rounded">&apos;to</code>.
+                  </li>
+                  <li>
+                    <strong>Style.</strong> Archaic-sounding rhythm. Made-up names that scan
+                    like Shakespeare names (<code className="bg-zinc-100 px-1 rounded">CESTIO</code>,
+                    <code className="bg-zinc-100 px-1 rounded ml-1">VARIIBERD</code>).
+                  </li>
+                </ul>
+                <p className="mt-3 text-sm text-zinc-600 leading-relaxed">
+                  What it didn&apos;t learn:
+                </p>
+                <ul className="mt-1 space-y-1 text-sm text-zinc-600 list-disc pl-5">
+                  <li>
+                    <strong>Words.</strong> It predicts one <em>character</em> at a time.
+                    There is no concept of &ldquo;word&rdquo; anywhere in the model.
+                  </li>
+                  <li>
+                    <strong>Meaning.</strong> None of the math knows what any of this means.
+                  </li>
+                  <li>
+                    <strong>Memory.</strong> Only the last 128 characters are visible to it.
+                    By the third speaker tag, it&apos;s forgotten the first two.
+                  </li>
+                </ul>
+                <p className="mt-3 text-sm text-zinc-600 leading-relaxed">
+                  This is the gap between <em>style</em> and <em>substance</em> — and big LLMs close it by being big.
+                </p>
+              </details>
+            )}
+
+            {lastTopK && (
+              <details className="mt-4 rounded-xl border border-zinc-200 bg-white p-4">
+                <summary className="cursor-pointer text-sm font-medium text-zinc-700">
                   What just happened?
                 </summary>
                 <p className="mt-2 text-sm text-zinc-600">
