@@ -47,7 +47,9 @@ export interface Weights {
 
 function flatten(rows: number[][]): Matrix {
   const r = rows.length;
+  if (r === 0) throw new Error("flatten: empty matrix");
   const c = rows[0].length;
+  if (c === 0) throw new Error("flatten: zero-column matrix");
   const data = new Float32Array(r * c);
   for (let i = 0; i < r; i++) {
     const row = rows[i];
