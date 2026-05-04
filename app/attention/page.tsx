@@ -5,6 +5,7 @@ import { ChapterHeader } from "@/components/ChapterHeader";
 import { Code } from "@/components/Code";
 import { MathBlock } from "@/components/MathBlock";
 import { NextChapter } from "@/components/NextChapter";
+import { PipelineStage } from "@/components/PipelineStage";
 
 type Attention = {
   prompt: string;
@@ -37,6 +38,7 @@ export default function AttentionPage() {
     <>
       <Nav />
       <main className="mx-auto max-w-3xl px-6 py-12">
+        <PipelineStage stage="4" name="Inside the transformer block" />
         <ChapterHeader num="05" slug="attention" title="The heart of the transformer">
           <p className="mb-3">
             This is the chapter the kid is built around. Everything before

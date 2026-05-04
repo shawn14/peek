@@ -5,6 +5,7 @@ import { ChapterHeader } from "@/components/ChapterHeader";
 import { Code } from "@/components/Code";
 import { MathBlock } from "@/components/MathBlock";
 import { NextChapter } from "@/components/NextChapter";
+import { PipelineStage } from "@/components/PipelineStage";
 
 export default function EmbeddingsPage() {
   const [vocab, setVocab] = useState<string[]>([]);
@@ -36,6 +37,7 @@ export default function EmbeddingsPage() {
     <>
       <Nav />
       <main className="mx-auto max-w-3xl px-6 py-12">
+        <PipelineStage stage="3" name="Embed (token half)" />
         <ChapterHeader num="03" slug="embeddings" title="Give each letter a meaning">
           <p className="mb-3">
             An ID like 7 isn&apos;t useful by itself. The number 7 is one

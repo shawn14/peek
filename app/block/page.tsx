@@ -5,6 +5,7 @@ import { ChapterHeader } from "@/components/ChapterHeader";
 import { Code } from "@/components/Code";
 import { MathBlock } from "@/components/MathBlock";
 import { NextChapter } from "@/components/NextChapter";
+import { PipelineStage } from "@/components/PipelineStage";
 
 type Meta = {
   n_params: number;
@@ -29,6 +30,7 @@ export default function BlockPage() {
     <>
       <Nav />
       <main className="mx-auto max-w-3xl px-6 py-12">
+        <PipelineStage stage="4" name="Transformer block ×4" />
         <ChapterHeader num="06" slug="block" title="Wrap it in a block, stack four">
           <p className="mb-3">
             Attention by itself isn&apos;t quite enough. The output of an

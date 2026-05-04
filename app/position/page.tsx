@@ -1,10 +1,12 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { ChapterHeader } from "@/components/ChapterHeader";
 import { Code } from "@/components/Code";
 import { MathBlock } from "@/components/MathBlock";
 import { NextChapter } from "@/components/NextChapter";
+import { PipelineStage } from "@/components/PipelineStage";
 
 export default function PositionPage() {
   const [tokEmb, setTokEmb] = useState<number[][]>([]);
@@ -51,6 +53,7 @@ export default function PositionPage() {
     <>
       <Nav />
       <main className="mx-auto max-w-3xl px-6 py-12">
+        <PipelineStage stage="3" name="Embed (position half)" />
         <ChapterHeader num="04" slug="position" title="Tell the model where things are">
           <p className="mb-3">
             Embeddings give every letter a meaning vector. But we&apos;ve lost
@@ -235,6 +238,29 @@ x = self.tok_emb(idx) + self.pos_emb(pos)`}
           Some other transformer designs use fixed sinusoidal patterns for
           positions (the original 2017 paper did). We do it Karpathy-style
           and let the kid invent its own.
+        </div>
+
+        <div className="mt-6 p-4 rounded-lg bg-blue-50 border border-blue-200 text-sm text-zinc-800 leading-relaxed">
+          <strong>One last thing — these 128 numbers are the start, not the answer.</strong>{" "}
+          The bars above show the <em>input</em> to the model — the very first
+          step of the math. The model still has to run all 4 transformer
+          blocks before deciding what comes next. The actual {" "}
+          <Link href="/prediction" className="underline underline-offset-2 hover:text-zinc-900">
+            &ldquo;pick the next letter&rdquo;
+          </Link>{" "}
+          happens at the <em>end</em> of the pipeline — after attention,
+          residuals, MLPs, the final LayerNorm, and the lm_head. That step
+          turns 128 numbers into 65 probabilities, and we draw one (weighted
+          by those probabilities, or always-the-highest if you set
+          temperature to 0 in the {" "}
+          <Link href="/playground" className="underline underline-offset-2 hover:text-zinc-900">
+            playground
+          </Link>
+          ). For the whole pipeline at a glance, see {" "}
+          <Link href="/atlas" className="underline underline-offset-2 hover:text-zinc-900">
+            atlas
+          </Link>
+          .
         </div>
 
         <NextChapter

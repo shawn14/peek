@@ -5,6 +5,7 @@ import { ChapterHeader } from "@/components/ChapterHeader";
 import { Code } from "@/components/Code";
 import { MathBlock } from "@/components/MathBlock";
 import { NextChapter } from "@/components/NextChapter";
+import { PipelineStage } from "@/components/PipelineStage";
 
 export default function TokensPage() {
   const [vocab, setVocab] = useState<string[]>([]);
@@ -34,6 +35,7 @@ export default function TokensPage() {
     <>
       <Nav />
       <main className="mx-auto max-w-3xl px-6 py-12">
+        <PipelineStage stage="2" name="Tokenize" />
         <ChapterHeader num="02" slug="vocab" title="Build a vocabulary">
           <p className="mb-3">
             We have 1.1 MB of Shakespeare. The model is going to do math on

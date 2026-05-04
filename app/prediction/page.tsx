@@ -5,6 +5,7 @@ import { ChapterHeader } from "@/components/ChapterHeader";
 import { Code } from "@/components/Code";
 import { MathBlock } from "@/components/MathBlock";
 import { NextChapter } from "@/components/NextChapter";
+import { PipelineStage } from "@/components/PipelineStage";
 
 type Predictions = {
   prompt: string;
@@ -38,6 +39,7 @@ export default function PredictionPage() {
     <>
       <Nav />
       <main className="mx-auto max-w-3xl px-6 py-12">
+        <PipelineStage stage="5–7" name="Final LayerNorm → Project → Softmax → Sample" />
         <ChapterHeader num="07" slug="prediction" title="Project back to letters">
           <p className="mb-3">
             After the last block, every position has a 128-dimensional vector
