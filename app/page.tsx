@@ -80,7 +80,7 @@ export default function Home() {
           <div className="space-y-5">
             <p className="text-lg text-zinc-700 leading-relaxed">
               We trained a tiny language model on the complete works of
-              Shakespeare. 825,000 weights, saved to a 4&nbsp;MB file, same
+              Shakespeare. 824,897 weights, saved to a 4&nbsp;MB file, same
               architecture as GPT-4 — just smaller.
             </p>
             <p className="text-lg text-zinc-700 leading-relaxed">
@@ -124,7 +124,7 @@ export default function Home() {
         </div>
 
         <p className="mt-12 text-sm text-zinc-500">
-          The model in this site has 825,000 parameters. GPT-4 is rumored to have
+          The model in this site has 824,897 parameters. GPT-4 is rumored to have
           ~1.8 trillion. Same playbook — same ten steps — at very different scale.
         </p>
       </main>

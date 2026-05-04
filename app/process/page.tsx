@@ -78,7 +78,7 @@ class Head(nn.Module):
             characters or labels.
           </li>
           <li>
-            <strong>How small the model is.</strong> 825,000 numbers fit in
+            <strong>How small the model is.</strong> 824,897 numbers fit in
             a 4 MB file. A single Word document of poetry is bigger than
             our entire LLM.
           </li>

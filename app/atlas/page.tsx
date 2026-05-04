@@ -116,25 +116,41 @@ function ProbBars({ count, seed }: { count: number; seed: number }) {
 }
 
 function BlockStack() {
-  const lines = [
-    "LayerNorm",
-    "4-head self-attn",
-    "+ residual",
-    "LayerNorm",
-    "MLP 128→512→128",
-    "+ residual",
-  ];
+  // Two sub-blocks (attn-with-residual, mlp-with-residual). Each has a
+  // visible residual stream on the left edge that branches at LN and
+  // re-joins at the +. The whole block is stamped ×4 to emphasize repetition.
+  const subBlock = (label: string, mid: string) => (
+    <div className="relative pl-3">
+      {/* residual stream */}
+      <span
+        className="absolute left-0 top-1.5 bottom-1.5 w-px bg-emerald-400"
+        aria-hidden
+      />
+      <span
+        className="absolute left-[-2px] top-1 w-[5px] h-[5px] rounded-full bg-emerald-400"
+        aria-hidden
+      />
+      <span
+        className="absolute left-[-2px] bottom-1 w-[5px] h-[5px] rounded-full bg-emerald-400"
+        aria-hidden
+      />
+      <div className="flex flex-col gap-[2px] text-[9.5px] font-mono leading-[1.1] text-zinc-600">
+        <span className="px-1 py-[1px] bg-white rounded border border-zinc-100">LayerNorm</span>
+        <span className="px-1 py-[1px] bg-white rounded border border-zinc-100">{mid}</span>
+        <span className="px-1 py-[1px] bg-white rounded border border-zinc-100 text-emerald-700">
+          + residual ({label})
+        </span>
+      </div>
+    </div>
+  );
   return (
-    <div className="relative w-full max-w-[140px] rounded-md border border-zinc-200 bg-zinc-50 p-1.5">
-      <span className="absolute -top-2 -right-2 text-[10px] font-mono text-zinc-500 bg-white border border-zinc-200 rounded px-1">
+    <div className="relative w-full max-w-[170px] rounded-md border border-zinc-300 bg-zinc-50 p-2 shadow-sm">
+      <span className="absolute -top-2 -right-2 text-[10px] font-mono text-white bg-zinc-700 rounded px-1.5 py-[1px]">
         ×4
       </span>
-      <div className="flex flex-col gap-[2px] text-[9.5px] font-mono leading-[1.1] text-zinc-600">
-        {lines.map((l) => (
-          <span key={l} className="px-1 py-[1px] bg-white rounded border border-zinc-100">
-            {l}
-          </span>
-        ))}
+      <div className="flex flex-col gap-1.5">
+        {subBlock("attn", "4-head self-attn")}
+        {subBlock("mlp", "MLP 128→512→128")}
       </div>
     </div>
   );

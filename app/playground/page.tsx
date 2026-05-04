@@ -226,7 +226,7 @@ export default function PlaygroundPage() {
                   Why does this look weird?
                 </summary>
                 <p className="mt-2 text-sm text-zinc-600 leading-relaxed">
-                  The kid is small. 825,000 weights — about <strong>2 million times less brain</strong> than GPT-4.
+                  The kid is small. 824,897 weights — about <strong>2 million times less brain</strong> than GPT-4.
                   It saw 1 MB of Shakespeare; GPT-4 saw trillions of tokens of internet.
                 </p>
                 <p className="mt-3 text-sm text-zinc-600 leading-relaxed">
