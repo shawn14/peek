@@ -70,6 +70,11 @@ export default function PlaygroundPage() {
     const { ids: promptIds, stripped: nStripped } = encode(prompt, weights.vocab);
     setStripped(nStripped);
 
+    if (promptIds.length === 0) {
+      setStatus("ready");
+      return;
+    }
+
     const ids: number[] = [...promptIds];
     let acc = "";
 
@@ -83,8 +88,17 @@ export default function PlaygroundPage() {
       acc += ch;
       setOutput(acc);
 
-      // keep last softmax for the "What just happened?" panel
-      const probs = softmax(logits.slice(), 1, logits.length);
+      // keep the temperature-adjusted distribution for the "What just happened?" panel,
+      // so the bars match what sample() actually drew from.
+      let probs: Float32Array;
+      if (temperature === 0) {
+        probs = new Float32Array(logits.length);
+        probs[tokenId] = 1;
+      } else {
+        const scaled = new Float32Array(logits.length);
+        for (let i = 0; i < logits.length; i++) scaled[i] = logits[i] / temperature;
+        probs = softmax(scaled, 1, scaled.length);
+      }
       const ranked = Array.from(probs)
         .map((p, i) => ({ char: weights.vocab[i], prob: p }))
         .sort((a, b) => b.prob - a.prob)
