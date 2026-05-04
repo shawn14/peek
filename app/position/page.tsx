@@ -112,10 +112,26 @@ x = self.tok_emb(idx) + self.pos_emb(pos)`}
         </h2>
         <p className="text-zinc-700 leading-relaxed mb-4">
           Below is the prompt &quot;{demoPrompt}&quot;. Click any character
-          to see (a) its token embedding, (b) the position embedding for that
-          slot, and (c) the sum that actually enters the first transformer
-          block.
+          to inspect what the model actually sees at that slot.
         </p>
+
+        <div className="mb-6 rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700 leading-relaxed">
+          <strong className="text-zinc-900">How to read each chart:</strong>{" "}
+          every bar is <strong>one of 128 numbers</strong> in that vector.
+          The horizontal axis is the index (dim 0 → dim 127); the vertical
+          axis is the value. Bars above the centerline are positive; bars
+          below are negative; saturated color is positive, light color is
+          negative. Hover a bar for its exact value.
+          <br />
+          <br />
+          Each character&apos;s {" "}
+          <span className="text-indigo-600 font-medium">token embedding</span>{" "}
+          gets added to its position&apos;s{" "}
+          <span className="text-amber-600 font-medium">position embedding</span>,
+          and the result —{" "}
+          <span className="text-emerald-600 font-medium">x[t]</span>{" "}
+          — is what the first transformer block actually reads.
+        </div>
 
         <div className="flex flex-wrap gap-1 mb-6">
           {demoChars.map((c, i) => (
@@ -134,30 +150,86 @@ x = self.tok_emb(idx) + self.pos_emb(pos)`}
           ))}
         </div>
 
+        <div className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
+          <div className="text-sm font-medium text-zinc-900 mb-2">
+            How the model gets these 128 numbers
+          </div>
+          <div className="font-mono text-[13px] text-zinc-700 leading-relaxed">
+            <div>
+              char{" "}
+              <span className="inline-block bg-zinc-100 border border-zinc-200 rounded px-1.5">
+                {JSON.stringify(display(demoChars[position] ?? ""))}
+              </span>
+              {" "}→ ID{" "}
+              <span className="inline-block bg-zinc-100 border border-zinc-200 rounded px-1.5">
+                {stoi[demoChars[position]] ?? "?"}
+              </span>
+              {" "}→ row{" "}
+              <span className="inline-block bg-indigo-100 border border-indigo-200 rounded px-1.5 text-indigo-800">
+                tok_emb[{stoi[demoChars[position]] ?? "?"}]
+              </span>
+              {" "}of the {tokEmb.length || 65}×128 token-embedding table
+            </div>
+            <div className="mt-1.5">
+              slot #{position} → row{" "}
+              <span className="inline-block bg-amber-100 border border-amber-200 rounded px-1.5 text-amber-800">
+                pos_emb[{position}]
+              </span>
+              {" "}of the 128×128 position-embedding table
+            </div>
+          </div>
+          <div className="mt-3 text-xs text-zinc-500 leading-relaxed">
+            Both &ldquo;tables&rdquo; are 2D arrays of weights. Looking up an
+            embedding is just <em>copying out one row</em> — no math, no
+            attention, no neural network. The model only learns what the
+            <em> contents</em> of those rows should be, not how to do the lookup.
+          </div>
+        </div>
+
         <div className="space-y-3">
           <VectorRow
             label={`tok_emb[${stoi[demoChars[position]] ?? "?"}]`}
-            sublabel={`character ${JSON.stringify(display(demoChars[position] ?? ""))}`}
+            sublabel={`what ${JSON.stringify(display(demoChars[position] ?? ""))} looks like to the model — 128 learned numbers`}
             vec={tokVec}
             color="indigo"
           />
           <div className="text-center text-2xl text-zinc-400 font-mono">+</div>
           <VectorRow
             label={`pos_emb[${position}]`}
-            sublabel={`position ${position} in the sequence`}
+            sublabel={`what "slot #${position}" looks like to the model — 128 learned numbers`}
             vec={posVec}
             color="amber"
           />
           <div className="text-center text-2xl text-zinc-400 font-mono">=</div>
           <VectorRow
             label="x[t]"
-            sublabel="what the first transformer block actually sees"
+            sublabel="the input to the first transformer block — element-wise sum of the two above"
             vec={sumVec}
             color="emerald"
           />
         </div>
 
-        <div className="mt-10 p-4 rounded-lg bg-zinc-100 text-sm text-zinc-700 leading-relaxed">
+        <div className="mt-8 p-4 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-zinc-700 leading-relaxed">
+          <strong>Things to try:</strong>
+          <ul className="list-disc pl-5 mt-2 space-y-1">
+            <li>
+              Click <code className="bg-white px-1 py-0.5 rounded border border-emerald-200">R</code> at pos 0,
+              then <code className="bg-white px-1 py-0.5 rounded border border-emerald-200">R</code> nowhere
+              else (no other R in this prompt) — the indigo (token) chart is fixed; only the amber (position) one would change.
+            </li>
+            <li>
+              Click <code className="bg-white px-1 py-0.5 rounded border border-emerald-200">o</code> at pos 1
+              vs pos 8. Same indigo chart (same letter), different amber chart (different position),
+              different emerald sum.
+            </li>
+            <li>
+              Click the two spaces (pos 6 and pos 9). Identical indigo (the model
+              has one canonical &ldquo;space&rdquo; vector), different amber.
+            </li>
+          </ul>
+        </div>
+
+        <div className="mt-4 p-4 rounded-lg bg-zinc-100 text-sm text-zinc-700 leading-relaxed">
           <strong>Notice:</strong> the position embeddings are learned, just
           like everything else — they were random at the start of training.
           Some other transformer designs use fixed sinusoidal patterns for
