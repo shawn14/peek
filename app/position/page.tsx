@@ -240,6 +240,136 @@ x = self.tok_emb(idx) + self.pos_emb(pos)`}
           and let the kid invent its own.
         </div>
 
+        {/* ─────────────────────────────────────────────────────────── */}
+        {/*  How we made it better — the v3 rewrite                    */}
+        {/* ─────────────────────────────────────────────────────────── */}
+        <h2 className="text-2xl font-bold mt-16 mb-2">
+          How we made it better
+        </h2>
+        <p className="text-sm uppercase tracking-wider text-zinc-500 font-mono mb-4">
+          v1 (learned lookup) → v3 (RoPE)
+        </p>
+        <p className="text-zinc-700 leading-relaxed mb-3">
+          Everything above is how the v1 kid handles position. It works, but
+          once you train it 5,000 times you start noticing things that aren&apos;t
+          great about it:
+        </p>
+        <ul className="list-disc pl-6 mb-5 text-zinc-700 leading-relaxed space-y-1.5 marker:text-zinc-400">
+          <li>
+            <strong>16,384 weights</strong> just for &ldquo;where am I&rdquo; —
+            about 2% of the whole model — and they all start random and have
+            to be learned from scratch.
+          </li>
+          <li>
+            <strong>It mixes &ldquo;what&rdquo; and &ldquo;where&rdquo;
+            into one vector on the input side.</strong> tok_emb + pos_emb get
+            added together; the attention layers then have to spend capacity
+            disentangling which signal is which.
+          </li>
+          <li>
+            <strong>It can&apos;t extrapolate.</strong> The kid has only
+            ever seen positions 0–127. Feed it position 128 and there is no
+            learned vector to look up.
+          </li>
+        </ul>
+
+        <p className="text-zinc-700 leading-relaxed mb-4">
+          In v3 we swap the lookup for <strong>rotary positional embeddings
+          (RoPE)</strong> — the same trick GPT-NeoX, LLaMA, and most modern
+          open LLMs use. It changes position from something{" "}
+          <em>added to the input</em> to something{" "}
+          <em>applied inside attention</em>. Instead of giving each slot its
+          own learned 128-number vector, every Q and K vector gets{" "}
+          <strong>rotated by an angle proportional to its position</strong>.
+          Different rotation rates per dimension pair, like clock hands
+          ticking at different speeds.
+        </p>
+
+        <RopeViz />
+
+        <Code caption="train_v3.py — applied inside Head.forward">
+{`def precompute_rope(head_size, max_seq, base=10000.0):
+    """cos/sin tables of shape (max_seq, head_size // 2)."""
+    half = head_size // 2
+    inv_freq = 1.0 / (base ** (torch.arange(0, half).float() / half))
+    t = torch.arange(max_seq).float()
+    freqs = torch.outer(t, inv_freq)
+    return freqs.cos(), freqs.sin()
+
+def apply_rope(x, cos, sin):
+    """Rotate (x1, x2) -> (x1·cos - x2·sin, x1·sin + x2·cos)."""
+    x1, x2 = x.chunk(2, dim=-1)
+    return torch.cat([x1 * cos - x2 * sin,
+                      x1 * sin + x2 * cos], dim=-1)`}
+        </Code>
+
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="rounded-xl border border-zinc-200 bg-white p-5">
+            <p className="text-[11px] uppercase tracking-wider text-zinc-500 font-mono mb-1">
+              v1 / v2 — learned lookup
+            </p>
+            <p className="text-sm text-zinc-700 leading-relaxed mb-3">
+              A 128 × 128 table of learned numbers. Each position has its
+              own vector, added to the token embedding before the first
+              block.
+            </p>
+            <div className="font-mono text-xs space-y-0.5 text-zinc-700">
+              <div>params <span className="text-zinc-900 font-bold">16,384</span></div>
+              <div>extrapolation <span className="text-zinc-400">no</span></div>
+              <div>lives in <span className="text-zinc-700">input</span></div>
+            </div>
+          </div>
+          <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-5">
+            <p className="text-[11px] uppercase tracking-wider text-emerald-700 font-mono mb-1">
+              v3 — RoPE
+            </p>
+            <p className="text-sm text-zinc-700 leading-relaxed mb-3">
+              A formula. Rotate Q and K by an angle equal to position ×
+              per-dim-pair frequency. Two cos/sin tables; nothing learned.
+            </p>
+            <div className="font-mono text-xs space-y-0.5 text-zinc-700">
+              <div>params <span className="text-emerald-700 font-bold">0</span></div>
+              <div>extrapolation <span className="text-emerald-700">yes</span></div>
+              <div>lives in <span className="text-zinc-700">attention</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 p-4 rounded-lg bg-zinc-100 text-sm text-zinc-700 leading-relaxed">
+          <strong>What this bought us on the actual model.</strong>{" "}
+          Dropping pos_emb saved 16,384 weights. v3 had{" "}
+          <strong>fewer total parameters</strong>{" "}
+          (799,041 vs v2&apos;s 816,577) and{" "}
+          <strong>better val loss</strong> (1.625 vs 1.718). Architecture
+          lineage matters more than parameter count at this scale —
+          a smaller model with better positional encoding beats a bigger
+          model with a worse one.
+        </div>
+
+        <p className="mt-6 text-zinc-700 leading-relaxed">
+          The rotation actually happens <em>inside</em> attention, not here
+          at the input. Q and K get rotated by their absolute positions
+          right before the dot-product score is computed — which means
+          two positions <em>m</em> and <em>n</em> produce a score that
+          depends only on (m − n). Attention then naturally encodes{" "}
+          <em>relative</em> position, with zero learned parameters. See{" "}
+          <Link
+            href="/attention"
+            className="underline underline-offset-2 hover:text-zinc-900"
+          >
+            attention
+          </Link>{" "}
+          for where the rotation actually applies, and{" "}
+          <Link
+            href="/evolution"
+            className="underline underline-offset-2 hover:text-zinc-900"
+          >
+            evolution
+          </Link>{" "}
+          for the full tweak-by-tweak journey across all five versions of
+          the kid.
+        </p>
+
         <div className="mt-6 p-4 rounded-lg bg-blue-50 border border-blue-200 text-sm text-zinc-800 leading-relaxed">
           <strong>One last thing — these 128 numbers are the start, not the answer.</strong>{" "}
           The bars above show the <em>input</em> to the model — the very first
@@ -270,6 +400,104 @@ x = self.tok_emb(idx) + self.pos_emb(pos)`}
         />
       </main>
     </>
+  );
+}
+
+function RopeViz() {
+  // Show the same 8 positions sweeping around the unit circle at three
+  // different rotation rates — that's RoPE's whole intuition: every
+  // dim pair rotates at a different speed, so the pattern across all
+  // 64 pairs uniquely encodes "where am I."
+  const positions = [0, 1, 2, 3, 4, 5, 6, 7];
+  const freqs = [
+    { label: "slow rate (later dim pair)", rate: 0.18, color: "#8b5cf6" },
+    { label: "medium rate", rate: 0.55, color: "#10b981" },
+    { label: "fast rate (earlier dim pair)", rate: 1.25, color: "#f59e0b" },
+  ];
+  return (
+    <div className="my-6 rounded-xl border border-zinc-200 bg-white p-5">
+      <p className="text-sm font-medium text-zinc-900 mb-1">
+        Position becomes geometry
+      </p>
+      <p className="text-[13px] text-zinc-600 leading-relaxed mb-4">
+        Same 8 positions, three different rotation rates. Position 0
+        always stays at 0°. Position 1 rotates one tick. Position 2 by two
+        ticks. Across 64 dim pairs the kid gets 64 different tick sizes
+        at once — every position ends up with a unique fingerprint of
+        angles, no learned weights required.
+      </p>
+      <div className="grid grid-cols-3 gap-3">
+        {freqs.map((f) => (
+          <div key={f.label}>
+            <svg viewBox="-1.45 -1.45 2.9 2.9" className="w-full h-auto">
+              {/* axes */}
+              <line
+                x1="-1.2"
+                x2="1.2"
+                y1="0"
+                y2="0"
+                stroke="#f4f4f5"
+                strokeWidth="0.02"
+              />
+              <line
+                x1="0"
+                x2="0"
+                y1="-1.2"
+                y2="1.2"
+                stroke="#f4f4f5"
+                strokeWidth="0.02"
+              />
+              <circle
+                cx="0"
+                cy="0"
+                r="1"
+                fill="none"
+                stroke="#e4e4e7"
+                strokeWidth="0.018"
+              />
+              {positions.map((p) => {
+                const angle = p * f.rate;
+                const x = Math.cos(angle);
+                const y = -Math.sin(angle); // SVG y points down
+                return (
+                  <g key={p}>
+                    <line
+                      x1="0"
+                      y1="0"
+                      x2={x}
+                      y2={y}
+                      stroke={f.color}
+                      strokeWidth="0.02"
+                      opacity="0.35"
+                    />
+                    <circle cx={x} cy={y} r="0.075" fill={f.color} />
+                    <text
+                      x={x * 1.28}
+                      y={y * 1.28 + 0.05}
+                      textAnchor="middle"
+                      style={{ fontSize: 0.18, fontFamily: "monospace" }}
+                      fill="#52525b"
+                    >
+                      {p}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+            <p className="text-[11px] text-zinc-500 font-mono text-center mt-1">
+              {f.label}
+            </p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-4 text-[12px] text-zinc-500 leading-relaxed">
+        Slow rate: nearby positions sit very close together — useful for
+        distinguishing far-apart tokens. Fast rate: even adjacent positions
+        land on very different angles — useful for distinguishing nearby
+        tokens. Stack 64 such patterns and every position 0–127 has a
+        unique signature without storing a single weight.
+      </p>
+    </div>
   );
 }
 

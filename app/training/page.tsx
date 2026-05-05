@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { ChapterHeader } from "@/components/ChapterHeader";
 import { Code } from "@/components/Code";
@@ -187,6 +188,165 @@ export default function TrainingPage() {
           weights. Just nudged 5,000 times.
         </div>
 
+        {/* ─────────────────────────────────────────────────────────── */}
+        {/*  How we made it better — the v2 regularization pass        */}
+        {/* ─────────────────────────────────────────────────────────── */}
+        <h2 className="text-2xl font-bold mt-16 mb-2">
+          How we made it better
+        </h2>
+        <p className="text-sm uppercase tracking-wider text-zinc-500 font-mono mb-4">
+          v1 (default) → v2 (regularized)
+        </p>
+        <p className="text-zinc-700 leading-relaxed mb-3">
+          The training loop above works. Final val loss <code>1.741</code>{" "}
+          looks fine on its own. But the train loss is{" "}
+          <code>1.476</code>, which means there&apos;s a <strong>0.265 gap</strong>{" "}
+          between &ldquo;how well the model fits the training set&rdquo;
+          and &ldquo;how well it does on text it hasn&apos;t seen.&rdquo;
+          That gap is the bug — the kid is partly memorizing Tiny
+          Shakespeare instead of learning to write it. At batch 32 ×
+          block 128 × 5,000 steps, it sees the dataset about 20×. Of
+          course it overfits.
+        </p>
+        <p className="text-zinc-700 leading-relaxed mb-4">
+          In v2 we made <strong>seven changes to how training is run</strong>{" "}
+          — not one of them about the model itself. Same architecture,
+          same weights, same data. Just better discipline:
+        </p>
+
+        {/* The seven changes table */}
+        <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden mb-6">
+          <table className="w-full text-[13px]">
+            <thead className="bg-zinc-50 text-[10px] uppercase tracking-wider text-zinc-500 font-mono">
+              <tr>
+                <th className="text-left px-4 py-2.5 w-[150px]">dimension</th>
+                <th className="text-left px-4 py-2.5">v1</th>
+                <th className="text-left px-4 py-2.5">v2</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ["LR schedule", "constant 3e-4", "cosine, 100-step warmup → floor 3e-5"],
+                ["Dropout", "none", "0.2 on attn + MLP outputs"],
+                ["Weight tying", "lm_head and tok_emb separate", "shared (saves 8,320 params)"],
+                ["Weight decay", "applied uniformly", "2D matmul weights only"],
+                ["Grad clip", "none", "norm 1.0"],
+                ["Init", "torch defaults", "N(0, 0.02) on Linear + Embedding"],
+                ["Save which model", "the last step", "best val seen so far"],
+              ].map(([k, a, b]) => (
+                <tr key={k} className="border-t border-zinc-100">
+                  <td className="px-4 py-2 font-mono text-zinc-500">{k}</td>
+                  <td className="px-4 py-2 text-zinc-700">{a}</td>
+                  <td className="px-4 py-2 text-zinc-900 font-medium">{b}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <GapMiniChart />
+
+        <Code caption="train_v2.py — the changes that mattered">
+{`# Cosine schedule with warmup
+def get_lr(step):
+    if step < WARMUP_STEPS:
+        return PEAK_LR * (step + 1) / WARMUP_STEPS
+    progress = (step - WARMUP_STEPS) / (MAX_STEPS - WARMUP_STEPS)
+    return MIN_LR + 0.5 * (PEAK_LR - MIN_LR) * (1 + math.cos(math.pi * progress))
+
+# Tied embeddings — same matrix, two roles
+self.lm_head.weight = self.tok_emb.weight
+
+# AdamW with separate decay groups (no decay on biases / norms)
+decay = [p for p in model.parameters() if p.dim() >= 2]
+nodecay = [p for p in model.parameters() if p.dim() < 2]
+opt = torch.optim.AdamW([
+    {"params": decay,   "weight_decay": 0.1},
+    {"params": nodecay, "weight_decay": 0.0},
+], lr=PEAK_LR)
+
+# In the training loop
+torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+if val_loss < best_val:
+    best_val = val_loss
+    torch.save(model.state_dict(), "kid_best.pt")`}
+        </Code>
+
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="rounded-xl border border-zinc-200 bg-white p-5">
+            <p className="text-[11px] uppercase tracking-wider text-zinc-500 font-mono mb-1">
+              v1 — default training
+            </p>
+            <p className="text-sm text-zinc-700 leading-relaxed mb-3">
+              Standard nanoGPT loop. AdamW @ 3e-4. No regularization, no
+              schedule, no clipping. Save the model at the last step.
+            </p>
+            <div className="font-mono text-xs space-y-0.5 text-zinc-700">
+              <div>train loss <span className="text-zinc-900 font-bold">1.476</span></div>
+              <div>val loss <span className="text-zinc-900 font-bold">1.741</span></div>
+              <div>gap <span className="text-zinc-900 font-bold">+0.265</span></div>
+            </div>
+          </div>
+          <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-5">
+            <p className="text-[11px] uppercase tracking-wider text-emerald-700 font-mono mb-1">
+              v2 — disciplined training
+            </p>
+            <p className="text-sm text-zinc-700 leading-relaxed mb-3">
+              Same model. Seven changes to the training loop. Train loss
+              went UP (the model stopped memorizing); the gap collapsed.
+            </p>
+            <div className="font-mono text-xs space-y-0.5 text-zinc-700">
+              <div>train loss <span className="text-zinc-900 font-bold">1.623</span></div>
+              <div>val loss <span className="text-emerald-700 font-bold">1.718</span></div>
+              <div>gap <span className="text-emerald-700 font-bold">+0.095</span> (−64%)</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 p-4 rounded-lg bg-zinc-100 text-sm text-zinc-700 leading-relaxed">
+          <strong>Why the val number barely moved.</strong> Val loss went
+          from 1.741 to 1.718 — a tiny improvement. The thing that
+          dramatically changed was the train/val GAP. Train loss got{" "}
+          <em>worse</em> (1.476 → 1.623), which is exactly the signature
+          of regularization working: the kid stopped memorizing Tiny
+          Shakespeare and started generalizing from it. Same final
+          quality on unseen text, but no longer over-fit. Without
+          this fix, every later improvement (the v3 architecture
+          rewrite, the bigger v4 kid) would have been built on top of an
+          already-overfit baseline and wouldn&apos;t cleanly attribute.
+        </div>
+
+        <div className="mt-4 p-4 rounded-lg bg-amber-50 border border-amber-200 text-sm text-zinc-700 leading-relaxed">
+          <strong>One bug worth telling.</strong> The first time we tried
+          tied embeddings, step-0 loss came out as <strong>82</strong>{" "}
+          instead of the expected <code>log(65) ≈ 4.17</code>. Cause:
+          PyTorch&apos;s default <code>nn.Embedding</code> init is{" "}
+          N(0, 1) — much larger than <code>nn.Linear</code>&apos;s
+          default. After tying <code>lm_head.weight = tok_emb.weight</code>,
+          the lm_head&apos;s weights inherited the embedding&apos;s
+          large init and logits exploded. Fix: explicitly init Linear
+          and Embedding weights to N(0, 0.02) and zero the biases — the
+          same thing nanoGPT does in its <code>_init_weights</code>{" "}
+          method. This is the most common bug introduced when you add
+          weight tying to a vanilla nanoGPT.
+        </div>
+
+        <p className="mt-6 text-zinc-700 leading-relaxed">
+          Closing this gap was the smallest absolute val-loss move in
+          the whole journey, but it&apos;s the one that{" "}
+          <strong>unlocked everything that came after</strong>. The v3
+          architecture rewrite (<Link href="/position" className="underline underline-offset-2 hover:text-zinc-900">RoPE</Link>,
+          RMSNorm, GELU) added another 0.093 of val improvement, and a
+          bigger v4 kid trained on 5.9× more text added 0.095 more —
+          but only because v2&apos;s regularization had given those
+          changes a clean baseline to land on. The full tweak-by-tweak
+          arc is in{" "}
+          <Link href="/evolution" className="underline underline-offset-2 hover:text-zinc-900">
+            evolution
+          </Link>
+          .
+        </p>
+
         <NextChapter
           href="/process"
           num="09"
@@ -205,6 +365,186 @@ function commentaryFor(step: number): string {
   if (step < 3000) return "Recognizable English words mixed with plausible nonsense. Character-name patterns are emerging.";
   if (step < 4500) return "Recognizable scene structure, valid character names, near-grammatical sentences.";
   return "Reads like Shakespeare-flavored prose. Most words are real; sentence structure is mostly right.";
+}
+
+// Side-by-side mini-charts: v1's diverging gap vs v2's tight curves.
+// Same axes for fair comparison. The point isn't to read exact losses —
+// it's to see the gap collapse visually.
+function GapMiniChart() {
+  const v1 = [
+    { step: 0, train: 4.330, val: 4.339 },
+    { step: 100, train: 2.671, val: 2.643 },
+    { step: 250, train: 2.488, val: 2.468 },
+    { step: 500, train: 2.382, val: 2.409 },
+    { step: 1000, train: 2.116, val: 2.162 },
+    { step: 1500, train: 1.910, val: 1.969 },
+    { step: 5000, train: 1.476, val: 1.741 },
+  ];
+  const v2 = [
+    { step: 0, train: 4.204, val: 4.201 },
+    { step: 100, train: 2.830, val: 2.793 },
+    { step: 500, train: 2.369, val: 2.319 },
+    { step: 1000, train: 2.183, val: 2.123 },
+    { step: 2000, train: 1.818, val: 1.909 },
+    { step: 3000, train: 1.694, val: 1.798 },
+    { step: 5000, train: 1.623, val: 1.718 },
+  ];
+  return (
+    <div className="my-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <MiniLossPanel
+        title="v1"
+        subtitle="train and val drift apart"
+        gap="+0.265"
+        gapColor="#71717a"
+        points={v1}
+        finalTrain={1.476}
+        finalVal={1.741}
+      />
+      <MiniLossPanel
+        title="v2"
+        subtitle="train and val stay together"
+        gap="+0.095"
+        gapColor="#10b981"
+        points={v2}
+        finalTrain={1.623}
+        finalVal={1.718}
+        emphasized
+      />
+    </div>
+  );
+}
+
+function MiniLossPanel({
+  title,
+  subtitle,
+  gap,
+  gapColor,
+  points,
+  finalTrain,
+  finalVal,
+  emphasized = false,
+}: {
+  title: string;
+  subtitle: string;
+  gap: string;
+  gapColor: string;
+  points: { step: number; train: number; val: number }[];
+  finalTrain: number;
+  finalVal: number;
+  emphasized?: boolean;
+}) {
+  const W = 320;
+  const H = 180;
+  const pad = { l: 36, r: 60, t: 14, b: 24 };
+  const innerW = W - pad.l - pad.r;
+  const innerH = H - pad.t - pad.b;
+
+  // Shared axes across BOTH charts so the visual comparison is fair.
+  const X_MAX = 5000;
+  const Y_MIN = 1.3;
+  const Y_MAX = 4.5;
+  const xFor = (s: number) => pad.l + (s / X_MAX) * innerW;
+  const yFor = (l: number) =>
+    pad.t + ((Y_MAX - l) / (Y_MAX - Y_MIN)) * innerH;
+
+  const trainPath = points
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${xFor(p.step)} ${yFor(p.train)}`)
+    .join(" ");
+  const valPath = points
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${xFor(p.step)} ${yFor(p.val)}`)
+    .join(" ");
+
+  const last = points[points.length - 1];
+
+  return (
+    <div
+      className={`rounded-xl border ${
+        emphasized ? "border-emerald-300 bg-emerald-50" : "border-zinc-200 bg-white"
+      } p-4`}
+    >
+      <div className="flex items-baseline justify-between mb-1">
+        <p className={`font-mono text-sm font-bold ${emphasized ? "text-emerald-700" : "text-zinc-900"}`}>
+          {title}
+        </p>
+        <p className="text-[11px] text-zinc-500 font-mono">
+          gap <span style={{ color: gapColor }} className="font-bold">{gap}</span>
+        </p>
+      </div>
+      <p className="text-[12px] text-zinc-600 mb-1">{subtitle}</p>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
+        {[2, 3, 4].map((t) => (
+          <g key={t}>
+            <line
+              x1={pad.l}
+              x2={W - pad.r}
+              y1={yFor(t)}
+              y2={yFor(t)}
+              stroke="#e4e4e7"
+              strokeDasharray="2 3"
+            />
+            <text
+              x={pad.l - 6}
+              y={yFor(t) + 4}
+              textAnchor="end"
+              className="fill-zinc-500"
+              style={{ fontSize: 9, fontFamily: "monospace" }}
+            >
+              {t.toFixed(1)}
+            </text>
+          </g>
+        ))}
+        <line
+          x1={pad.l}
+          x2={W - pad.r}
+          y1={H - pad.b}
+          y2={H - pad.b}
+          stroke="#a1a1aa"
+        />
+        {[0, 2500, 5000].map((s) => (
+          <text
+            key={s}
+            x={xFor(s)}
+            y={H - pad.b + 14}
+            textAnchor="middle"
+            className="fill-zinc-500"
+            style={{ fontSize: 9, fontFamily: "monospace" }}
+          >
+            {s === 0 ? "0" : `${s / 1000}K`}
+          </text>
+        ))}
+        {/* val under train so train sits on top */}
+        <path d={valPath} stroke="#a1a1aa" strokeWidth={1.5} fill="none" />
+        <path d={trainPath} stroke="#10b981" strokeWidth={1.8} fill="none" />
+        {/* end-of-line value labels */}
+        <circle cx={xFor(last.step)} cy={yFor(last.train)} r={2.5} fill="#10b981" />
+        <circle cx={xFor(last.step)} cy={yFor(last.val)} r={2.5} fill="#a1a1aa" />
+        <text
+          x={xFor(last.step) + 6}
+          y={yFor(last.train) + 3}
+          className="fill-emerald-700"
+          style={{ fontSize: 9, fontFamily: "monospace" }}
+        >
+          {finalTrain.toFixed(2)}
+        </text>
+        <text
+          x={xFor(last.step) + 6}
+          y={yFor(last.val) + 3}
+          className="fill-zinc-600"
+          style={{ fontSize: 9, fontFamily: "monospace" }}
+        >
+          {finalVal.toFixed(2)}
+        </text>
+      </svg>
+      <div className="flex gap-3 text-[10px] font-mono text-zinc-500">
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-3 h-[2px] bg-emerald-500" /> train
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-3 h-[2px] bg-zinc-400" /> val
+        </span>
+      </div>
+    </div>
+  );
 }
 
 function LossChart({

@@ -144,25 +144,179 @@ bun install && bun dev
 open http://localhost:3000`}
         </Code>
 
-        <h2 className="text-xl font-bold mt-12 mb-3">What&apos;s next</h2>
-        <p className="text-zinc-700 leading-relaxed mb-3">
-          We shipped one — try the{" "}
-          <Link href="/playground" className="underline underline-offset-4">
-            playground
-          </Link>
-          . A few more directions this could grow:
+        {/* ─────────────────────────────────────────────────────────── */}
+        {/*  How we made it better — the multi-version journey         */}
+        {/* ─────────────────────────────────────────────────────────── */}
+        <h2 className="text-2xl font-bold mt-16 mb-2">
+          How we made it better
+        </h2>
+        <p className="text-sm uppercase tracking-wider text-zinc-500 font-mono mb-4">
+          v1 → v2 → v3 → v3-long → v4 (the actual journey)
         </p>
-        <ul className="space-y-2 text-zinc-700 leading-relaxed list-disc pl-6">
-          <li>
-            <strong>Watch a single weight learn.</strong> Save not just text
-            samples at each checkpoint but a single weight value. Animate
-            its trajectory over the 5,000 steps.
-          </li>
-          <li>
-            <strong>Bigger kid, same explanation.</strong> Run a 10M-param
-            version overnight, see whether the explanations still hold up.
-          </li>
-        </ul>
+        <p className="text-zinc-700 leading-relaxed mb-4">
+          After we shipped v1, the train/val gap was bothering us. The
+          kid scored <code className="text-sm bg-zinc-100 px-1 py-0.5 rounded">1.476</code>{" "}
+          on training data and{" "}
+          <code className="text-sm bg-zinc-100 px-1 py-0.5 rounded">1.741</code>{" "}
+          on text it hadn&apos;t seen — a 0.265 spread that meant it had
+          partly memorized Tiny Shakespeare instead of learning to write
+          it. Four iterations later that gap had collapsed and the val
+          loss had dropped 16%. Same one-file training script, same
+          65-character vocab. Just better discipline, a more modern
+          architecture, more patience, and (briefly) more data.
+        </p>
+
+        <div className="space-y-3 my-6">
+          <JourneyCard
+            id="v2"
+            title="Tier 1 — discipline"
+            color="#f59e0b"
+            takeaway="Closed the train/val gap by 64%."
+            body={
+              <>
+                Same architecture, seven changes to how training is run:
+                dropout, cosine LR with warmup, tied embeddings, AdamW
+                param groups, gradient clipping, best-val checkpointing,
+                proper init. Train loss went UP (memorization stopped); val
+                loss barely moved (the kid was already learning the right
+                patterns; it just stopped overfitting). The gap{" "}
+                <strong>0.265 → 0.095</strong>. See{" "}
+                <Link href="/training" className="underline underline-offset-2 hover:text-zinc-900">
+                  training
+                </Link>
+                .
+              </>
+            }
+          />
+          <JourneyCard
+            id="v3"
+            title="Tier 2 — modernize the architecture"
+            color="#8b5cf6"
+            takeaway="Fewer parameters, better val loss. RoPE was the biggest single move in the whole journey."
+            body={
+              <>
+                Three architecture swaps from the Llama-family playbook:
+                RoPE (rotational positions, replacing learned{" "}
+                <code className="text-[12px] bg-zinc-100 px-1 rounded">pos_emb</code>),
+                RMSNorm (replacing LayerNorm), GELU (replacing ReLU). The
+                kid lost 17K parameters and gained 0.093 val loss. See{" "}
+                <Link href="/position" className="underline underline-offset-2 hover:text-zinc-900">
+                  position
+                </Link>
+                ,{" "}
+                <Link href="/attention" className="underline underline-offset-2 hover:text-zinc-900">
+                  attention
+                </Link>
+                ,{" "}
+                <Link href="/block" className="underline underline-offset-2 hover:text-zinc-900">
+                  block
+                </Link>
+                .
+              </>
+            }
+          />
+          <JourneyCard
+            id="v3-long"
+            title="Patience"
+            color="#6d28d9"
+            takeaway="Same code as v3 — the val curve was still descending; we doubled the budget."
+            body={
+              <>
+                MAX_STEPS 5K → 10K, MIN_LR 3e-5 → 5e-5 so the late-stage
+                model isn&apos;t crawling. Best val landed at step 9,000;
+                val turned UP between 9K and 10K — first time best-val
+                checkpointing actually mattered. Result: val{" "}
+                <strong>1.551</strong>. This is the kid in the
+                playground.
+              </>
+            }
+          />
+          <JourneyCard
+            id="v4"
+            title="Bigger kid + more data"
+            color="#10b981"
+            takeaway="Reached val 1.456, but the file size tripled. Real data point — not the canonical kid."
+            body={
+              <>
+                N_EMBD 128 → 192, N_LAYER 4 → 6, N_HEAD 4 → 6
+                (≈ 2.7M params, 3.4× v3-long). Corpus expanded to 6.54M
+                chars: Tiny Shakespeare + Complete Shakespeare + Marlowe.
+                Best val 1.456 at step 15,000. Real characters from
+                across the plays appeared in the same scene (DUMAINE,
+                ANTONIO, GLOUCESTER, Biondello). But{" "}
+                <code className="text-[12px] bg-zinc-100 px-1 rounded">kid_v4.pt</code>{" "}
+                is 13.7 MB — about 3× v3-long&apos;s 4.5 MB — and a
+                tenth-of-a-point val improvement isn&apos;t visible in
+                casual reading. We kept v3-long as the playground kid.
+              </>
+            }
+          />
+        </div>
+
+        <div className="my-8 rounded-xl border border-zinc-200 bg-white overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-zinc-50 text-[10px] uppercase tracking-wider text-zinc-500 font-mono">
+              <tr>
+                <th className="text-left px-4 py-2.5">version</th>
+                <th className="text-right px-4 py-2.5">params</th>
+                <th className="text-right px-4 py-2.5">val loss</th>
+                <th className="text-right px-4 py-2.5">gap</th>
+              </tr>
+            </thead>
+            <tbody className="font-mono">
+              {[
+                ["v1 vanilla", "824,897", "1.741", "+0.265"],
+                ["v2 +regularization", "816,577", "1.718", "+0.095"],
+                ["v3 +Llama arch", "799,041", "1.625", "+0.086"],
+                ["v3-long +patience", "799,041", "1.551", "+0.218"],
+                ["v4 +scale", "2,676,161", "1.456", "+0.192"],
+              ].map(([v, p, vl, g]) => (
+                <tr key={v} className={`border-t border-zinc-100 ${v === "v3-long +patience" ? "bg-emerald-50" : ""}`}>
+                  <td className="px-4 py-2 text-zinc-800">
+                    {v}
+                    {v === "v3-long +patience" && (
+                      <span className="ml-2 text-[10px] uppercase tracking-wider text-emerald-700 font-bold">
+                        canonical
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-right text-zinc-700">{p}</td>
+                  <td className="px-4 py-2 text-right font-bold text-zinc-900">{vl}</td>
+                  <td className="px-4 py-2 text-right text-zinc-700">{g}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="my-6 p-5 rounded-lg bg-emerald-50 border border-emerald-200 text-[14px] text-zinc-800 leading-relaxed">
+          <strong>Why v3-long is the kid in the playground.</strong>{" "}
+          Same architecture as the most modern version (RoPE, RMSNorm,
+          GELU, tied embeddings, regularized training) at the original
+          4.5 MB file size — a casual reader doesn&apos;t notice the
+          0.095 val-loss difference between v3-long and v4, but they
+          definitely notice a 3× heavier download. The journey is the
+          lesson; the best <em>shippable</em> kid is the one that
+          loads fast.
+        </div>
+
+        <p className="text-zinc-700 leading-relaxed">
+          For the full tweak-by-tweak walkthrough — including the
+          side-by-side sample comparison and the loss curves overlaid —
+          see{" "}
+          <Link href="/evolution" className="underline underline-offset-4 hover:text-zinc-900">
+            evolution
+          </Link>
+          . Source for every version is in the{" "}
+          <code className="text-sm bg-zinc-100 px-1 py-0.5 rounded">tiny-llm</code>{" "}
+          repo as <code className="text-sm bg-zinc-100 px-1 py-0.5 rounded">train.py</code>,{" "}
+          <code className="text-sm bg-zinc-100 px-1 py-0.5 rounded">train_v2.py</code>,
+          …,{" "}
+          <code className="text-sm bg-zinc-100 px-1 py-0.5 rounded">train_v4.py</code>{" "}
+          — readable side-by-side as one big diff, plus a{" "}
+          <code className="text-sm bg-zinc-100 px-1 py-0.5 rounded">JOURNEY.md</code>{" "}
+          that tells the story.
+        </p>
 
         <div className="mt-12 p-5 rounded-xl bg-emerald-50 border border-emerald-200 text-zinc-800 leading-relaxed">
           <strong>Thanks for reading.</strong> If anything was confusing,
@@ -180,5 +334,40 @@ open http://localhost:3000`}
         </Link>
       </main>
     </>
+  );
+}
+
+function JourneyCard({
+  id,
+  title,
+  color,
+  takeaway,
+  body,
+}: {
+  id: string;
+  title: string;
+  color: string;
+  takeaway: string;
+  body: React.ReactNode;
+}) {
+  return (
+    <div
+      className="rounded-xl border border-zinc-200 bg-white overflow-hidden"
+      style={{ borderLeft: `4px solid ${color}` }}
+    >
+      <div className="px-5 py-4">
+        <div className="flex items-baseline gap-3 mb-1">
+          <span
+            className="text-[11px] font-mono uppercase tracking-wider"
+            style={{ color }}
+          >
+            {id}
+          </span>
+          <h3 className="font-bold text-zinc-900">{title}</h3>
+        </div>
+        <p className="text-[13px] text-zinc-500 italic mb-2">{takeaway}</p>
+        <p className="text-[14px] text-zinc-700 leading-relaxed">{body}</p>
+      </div>
+    </div>
   );
 }

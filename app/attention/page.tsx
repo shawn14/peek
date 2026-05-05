@@ -274,6 +274,101 @@ export default function AttentionPage() {
           better at predicting Shakespeare.
         </div>
 
+        {/* ─────────────────────────────────────────────────────────── */}
+        {/*  How we made it better — the v3 RoPE update                */}
+        {/* ─────────────────────────────────────────────────────────── */}
+        <h2 className="text-2xl font-bold mt-16 mb-2">
+          How we made it better
+        </h2>
+        <p className="text-sm uppercase tracking-wider text-zinc-500 font-mono mb-4">
+          v1 (Q · Kᵀ) → v3 (rotate Q and K first)
+        </p>
+        <p className="text-zinc-700 leading-relaxed mb-3">
+          The Q/K/V mechanics above are unchanged across every version of
+          the kid. v3 doesn&apos;t touch the math of attention — it only
+          changes <em>what goes in</em>. After computing Q and K from x,
+          v3 rotates them by their absolute position with{" "}
+          <Link href="/position" className="underline underline-offset-2 hover:text-zinc-900">
+            RoPE
+          </Link>{" "}
+          before the dot-product score. Three lines added; ten thousand
+          weights of <code className="text-sm bg-zinc-100 px-1 py-0.5 rounded">pos_emb</code>{" "}
+          deleted from the model entirely.
+        </p>
+
+        <Code caption="train_v3.py — Head.forward (the only change is the two apply_rope calls)">
+{`def forward(self, x):
+    B, T, C = x.shape
+    q = self.query(x)
+    k = self.key(x)
+    v = self.value(x)
+    # v3 only — rotate Q and K by their absolute position
+    q = apply_rope(q, self.rope_cos[:T], self.rope_sin[:T])
+    k = apply_rope(k, self.rope_cos[:T], self.rope_sin[:T])
+    scores = q @ k.transpose(-2, -1) / (self.head_size ** 0.5)
+    scores = scores.masked_fill(self.mask[:T, :T] == 0, float("-inf"))
+    weights = F.softmax(scores, dim=-1)
+    return weights @ v`}
+        </Code>
+
+        <div className="mt-6 p-5 rounded-lg bg-zinc-50 border border-zinc-200 text-[14px] text-zinc-700 leading-relaxed">
+          <strong className="text-zinc-900">
+            Why this trick works: relative position falls out for free.
+          </strong>{" "}
+          Rotating a vector by angle <em>α</em> and another by angle{" "}
+          <em>β</em>, then taking their dot product, gives a result that
+          depends on (<em>α</em> − <em>β</em>) — the <em>difference</em>{" "}
+          of the two angles, not their absolute values. Since each
+          position&apos;s rotation angle is proportional to that
+          position, the attention score between query position{" "}
+          <em>m</em> and key position <em>n</em> ends up depending only
+          on <em>(m − n)</em>: how far apart they are, not where in the
+          sequence they sit. A pair five chars apart at the start of the
+          line produces the same score as a pair five chars apart at the
+          end. Attention naturally encodes <strong>relative</strong>{" "}
+          position, with zero learned parameters.
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="rounded-xl border border-zinc-200 bg-white p-5">
+            <p className="text-[11px] uppercase tracking-wider text-zinc-500 font-mono mb-1">
+              v1 / v2 — bare Q · Kᵀ
+            </p>
+            <p className="text-sm text-zinc-700 leading-relaxed">
+              Position arrives at the input as a learned 16,384-weight
+              vector added to tok_emb. Attention then has to reverse-engineer
+              &ldquo;where am I&rdquo; from the additive signal.
+            </p>
+          </div>
+          <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-5">
+            <p className="text-[11px] uppercase tracking-wider text-emerald-700 font-mono mb-1">
+              v3 — rotated Q · Kᵀ
+            </p>
+            <p className="text-sm text-zinc-700 leading-relaxed">
+              Position arrives <em>inside</em> attention as a rotation
+              applied to Q and K. Zero learned parameters. Score
+              naturally encodes (m − n).
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 p-4 rounded-lg bg-zinc-100 text-sm text-zinc-700 leading-relaxed">
+          <strong>What this bought us.</strong> v3 had{" "}
+          <strong>fewer total parameters</strong> than v2 (799,041 vs
+          816,577 — the 16,384 saved came almost entirely from deleting
+          pos_emb) and <strong>better val loss</strong> (1.625 vs
+          1.718). RoPE was the single biggest single-change-set jump in
+          the whole journey. See{" "}
+          <Link href="/position" className="underline underline-offset-2 hover:text-zinc-900">
+            position
+          </Link>{" "}
+          for the geometry of the rotation itself, and{" "}
+          <Link href="/evolution" className="underline underline-offset-2 hover:text-zinc-900">
+            evolution
+          </Link>{" "}
+          for the full tweak-by-tweak arc.
+        </div>
+
         <div className="mt-6 p-4 rounded-lg bg-blue-50 border border-blue-200 text-sm text-zinc-800 leading-relaxed">
           <strong>Next: still stage 4 — wrapping attention into a block.</strong>{" "}
           A single attention head isn&apos;t enough on its own. The model
