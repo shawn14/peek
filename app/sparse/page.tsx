@@ -16,6 +16,15 @@ const MAX_PROMPT = 64;
 const MAX_LENGTH = 400;
 const BLOCK_SIZE = 128;
 
+// Real loss numbers from training runs at step 5000 (Shawn's runs, May 2026).
+const RESULTS: Record<number, { train: number; val: number; label: string }> = {
+  4:   { train: 1.478, val: 1.646, label: "extreme sparsity" },
+  8:   { train: 1.455, val: 1.655, label: "moderate sparsity" },
+  16:  { train: 1.447, val: 1.652, label: "light sparsity" },
+  128: { train: 1.513, val: 1.694, label: "no sparsity (dense)" },
+};
+const TRAINED_VARIANTS = [4, 8, 16] as const;
+
 type Status = "loading" | "ready" | "generating" | "error";
 
 function tempLabel(t: number): string {
@@ -63,26 +72,34 @@ async function fetchJSON(path: string) {
   return res.json();
 }
 
+// K=8 is the original sparse-trained kid in /data/sparse/. Other K values
+// were exported to /data/sparse_k{K}/ as separate runs.
+function dirFor(trainedK: number): string {
+  return trainedK === 8 ? "/data/sparse" : `/data/sparse_k${trainedK}`;
+}
+
 async function fetchSparseWeights(
+  trainedK: number,
   onProgress?: (label: string) => void
 ): Promise<Weights & { trainedTopK?: number }> {
+  const dir = dirFor(trainedK);
   onProgress?.("vocab + meta");
   const [vocab, meta] = await Promise.all([
-    fetchJSON("/data/sparse/vocab.json") as Promise<string[]>,
-    fetchJSON("/data/sparse/meta.json") as Promise<Weights["meta"] & { trained_top_k?: number }>,
+    fetchJSON(`${dir}/vocab.json`) as Promise<string[]>,
+    fetchJSON(`${dir}/meta.json`) as Promise<Weights["meta"] & { trained_top_k?: number }>,
   ]);
   onProgress?.("embeddings");
   const [tokEmbRaw, posEmbRaw] = await Promise.all([
-    fetchJSON("/data/sparse/tok_emb.json") as Promise<number[][]>,
-    fetchJSON("/data/sparse/pos_emb.json") as Promise<number[][]>,
+    fetchJSON(`${dir}/tok_emb.json`) as Promise<number[][]>,
+    fetchJSON(`${dir}/pos_emb.json`) as Promise<number[][]>,
   ]);
   onProgress?.("output head");
-  const lmHeadRaw = (await fetchJSON("/data/sparse/lm_head.json")) as {
+  const lmHeadRaw = (await fetchJSON(`${dir}/lm_head.json`)) as {
     weight: number[][];
     bias: number[];
   };
   onProgress?.("transformer blocks");
-  const blocksRaw = (await fetchJSON("/data/sparse/blocks.json")) as {
+  const blocksRaw = (await fetchJSON(`${dir}/blocks.json`)) as {
     final_ln: { gain: number[]; bias: number[] };
     blocks: Array<{
       ln1: { gain: number[]; bias: number[] };
@@ -136,23 +153,24 @@ export default function SparsePage() {
   const [length, setLength] = useState(DEFAULT_LENGTH);
   const [output, setOutput] = useState("");
   const [stripped, setStripped] = useState(0);
-  const [trainedK, setTrainedK] = useState<number | null>(null);
+  // Which trained variant is loaded (4 / 8 / 16). Default 8 for backward compat.
+  const [trainedK, setTrainedK] = useState<number>(8);
 
   const weightsRef = useRef<Weights | null>(null);
   const cancelRef = useRef(false);
 
   useEffect(() => {
     let alive = true;
-    fetchSparseWeights((label) => {
+    setStatus("loading");
+    fetchSparseWeights(trainedK, (label) => {
       if (alive) setLoadingLabel(label);
     })
       .then((w) => {
         if (!alive) return;
         weightsRef.current = w;
-        if (w.trainedTopK) {
-          setTrainedK(w.trainedTopK);
-          setTopK(w.trainedTopK);
-        }
+        // Set the inference-time K slider to the model's training-time K so
+        // by default the model is in its "native" regime.
+        setTopK(trainedK);
         setStatus("ready");
       })
       .catch((e) => {
@@ -163,7 +181,7 @@ export default function SparsePage() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [trainedK]);
 
   async function generate() {
     const weights = weightsRef.current;
@@ -218,12 +236,82 @@ export default function SparsePage() {
             announcements — content-dependent sparse attention, learned end-to-end.
           </p>
           <p className="mb-3">
-            The sparse kid was trained from scratch with K = {trainedK ?? "?"}.
-            Slide K below to see what happens when you change it at inference
-            time. K = {BLOCK_SIZE} is full dense attention; K = 1 is the most
-            extreme sparsity (each position looks at <em>one</em> past position).
+            We trained three sparse kids from scratch — K=4, K=8, K=16 — and
+            compared them against the dense kid (K=128, full attention).
+            Pick a variant below to load it; slide K to change attention sparsity
+            at inference time.
           </p>
         </ChapterHeader>
+
+        <div className="mb-8 rounded-xl border border-zinc-200 bg-white p-5">
+          <div className="mb-3 text-sm font-medium text-zinc-900">
+            Val loss after 5,000 training steps (lower is better):
+          </div>
+          <div className="space-y-1.5">
+            {[4, 8, 16, 128].map((k) => {
+              const r = RESULTS[k];
+              const minVal = Math.min(...Object.values(RESULTS).map((x) => x.val));
+              const maxVal = Math.max(...Object.values(RESULTS).map((x) => x.val));
+              const range = maxVal - minVal || 1;
+              const widthPct = 30 + ((maxVal - r.val) / range) * 70; // 30%-100%
+              const isWinner = r.val === minVal;
+              return (
+                <div key={k} className="flex items-center gap-3 text-sm">
+                  <span className="w-20 font-mono text-zinc-700">
+                    K = {k === 128 ? "128 (dense)" : k}
+                  </span>
+                  <span
+                    className={`h-5 rounded ${isWinner ? "bg-emerald-500" : "bg-zinc-300"}`}
+                    style={{ width: `${widthPct}%` }}
+                  />
+                  <span className="font-mono tabular-nums text-zinc-700">
+                    {r.val.toFixed(3)}
+                  </span>
+                  {isWinner && <span className="text-xs text-emerald-700">best ✓</span>}
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-4 text-xs text-zinc-500 leading-relaxed">
+            Any meaningful sparsity (K=4, 8, or 16) beats dense by ~0.04 val
+            loss — a real and consistent gap. The three sparse runs land
+            within 0.01 of each other, which suggests the &ldquo;any
+            sparsity vs no sparsity&rdquo; distinction matters more than the
+            exact K. Most likely explanation: top-K acts as implicit
+            regularization, preventing the dense kid&apos;s overfitting
+            documented on <Link href="/process" className="underline underline-offset-2">/process</Link>.
+            One run per K, one seed — single-seed variance is unmeasured.
+          </p>
+        </div>
+
+        <div className="mb-6 rounded-xl border border-zinc-200 bg-white p-4">
+          <div className="mb-2 text-sm font-medium text-zinc-900">
+            Which kid to load
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {TRAINED_VARIANTS.map((k) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setTrainedK(k)}
+                disabled={status === "generating"}
+                className={`rounded-md border px-3 py-1.5 text-sm font-mono transition-colors ${
+                  trainedK === k
+                    ? "border-zinc-900 bg-zinc-900 text-white"
+                    : "border-zinc-300 bg-white text-zinc-700 hover:border-zinc-500"
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                K={k}
+                <span className="ml-1.5 text-[11px] opacity-70">
+                  val {RESULTS[k].val.toFixed(3)}
+                </span>
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-zinc-500">
+            Switching reloads weights (~2 MB).
+          </p>
+        </div>
 
         {status === "loading" && (
           <div className="rounded-xl border border-zinc-200 bg-white p-5 text-zinc-600">
@@ -279,7 +367,7 @@ export default function SparsePage() {
                 className="mt-2 block w-full"
               />
               <span className="mt-1 block text-xs text-zinc-500">{kLabel(topK)}</span>
-              {trainedK !== null && topK !== trainedK && (
+              {topK !== trainedK && (
                 <span className="mt-1 block text-xs text-amber-700">
                   Note: this kid was trained at K={trainedK}. At very different K
                   values, output quality may drop because the model never saw that
@@ -389,7 +477,7 @@ export default function SparsePage() {
               <ul className="list-disc pl-5 mt-2 space-y-1">
                 <li>Slide K down to 1, generate. Each position only sees its single most-relevant past position. Watch quality collapse.</li>
                 <li>Slide K up to {BLOCK_SIZE}. Now sparse attention <em>is</em> dense attention. Quality should be the dense baseline.</li>
-                <li>Slide K to the trained value ({trainedK ?? "?"}). This is the kid&apos;s &ldquo;native&rdquo; sparsity.</li>
+                <li>Slide K to the trained value ({trainedK}). This is the kid&apos;s &ldquo;native&rdquo; sparsity.</li>
                 <li>Compare to the dense kid on <Link href="/playground" className="underline underline-offset-2">/playground</Link> — same architecture, same data, different attention regime.</li>
               </ul>
             </div>
