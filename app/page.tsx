@@ -123,6 +123,41 @@ export default function Home() {
           ))}
         </div>
 
+        <h2 className="mt-12 mb-4 text-sm font-mono uppercase tracking-wider text-zinc-400">
+          Labs
+        </h2>
+        <div className="space-y-3">
+          <Link
+            href="/atlas"
+            className="block group rounded-xl border border-zinc-200 bg-white p-5 hover:border-zinc-400 transition-colors"
+          >
+            <div className="flex items-baseline gap-4">
+              <span className="text-zinc-300 font-mono text-sm">★</span>
+              <h2 className="font-semibold text-xl group-hover:underline underline-offset-4">
+                Atlas — the kid, all in one picture
+              </h2>
+            </div>
+            <p className="text-zinc-600 mt-2 ml-9 leading-relaxed">
+              Every operation, every weight, every shape of the forward pass on a single page. Use the chapters for <em>why</em>; this is the <em>what</em>, all in one view.
+            </p>
+          </Link>
+
+          <Link
+            href="/sparse"
+            className="block group rounded-xl border border-zinc-200 bg-white p-5 hover:border-zinc-400 transition-colors"
+          >
+            <div className="flex items-baseline gap-4">
+              <span className="text-zinc-300 font-mono text-sm">★</span>
+              <h2 className="font-semibold text-xl group-hover:underline underline-offset-4">
+                Sparse-attention lab
+              </h2>
+            </div>
+            <p className="text-zinc-600 mt-2 ml-9 leading-relaxed">
+              We trained the kid three more times with SubQ-style top-K sparse attention (K=4, 8, 16). All three beat the dense baseline on val loss by ~0.04. Pick a variant, slide K, watch the math change.
+            </p>
+          </Link>
+        </div>
+
         <p className="mt-12 text-sm text-zinc-500">
           The model in this site has 824,897 parameters. GPT-4 is rumored to have
           ~1.8 trillion. Same playbook — same ten steps — at very different scale.
