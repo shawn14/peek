@@ -25,6 +25,14 @@ const RESULTS: Record<number, { train: number; val: number; label: string }> = {
 };
 const TRAINED_VARIANTS = [4, 8, 16] as const;
 
+// T-axis sweep: how dense vs sparse-K=4-or-equivalent perform as context grows.
+// "Equivalent" = K scaled to keep ~3% sparsity ratio across T values.
+const T_SWEEP: { t: number; denseVal: number; sparseK: number; sparseVal: number }[] = [
+  { t: 128,  denseVal: 1.694, sparseK: 4,  sparseVal: 1.646 },  // sparse wins
+  { t: 512,  denseVal: 1.697, sparseK: 16, sparseVal: 1.806 },  // dense wins
+  { t: 1024, denseVal: 1.731, sparseK: 32, sparseVal: 1.994 },  // dense wins by more
+];
+
 type Status = "loading" | "ready" | "generating" | "error";
 
 function tempLabel(t: number): string {
@@ -273,14 +281,77 @@ export default function SparsePage() {
             })}
           </div>
           <p className="mt-4 text-xs text-zinc-500 leading-relaxed">
-            Any meaningful sparsity (K=4, 8, or 16) beats dense by ~0.04 val
-            loss — a real and consistent gap. The three sparse runs land
+            <strong>At T=128, any meaningful sparsity beats dense by ~0.04 val
+            loss</strong> — a real and consistent gap. The three sparse runs land
             within 0.01 of each other, which suggests the &ldquo;any
             sparsity vs no sparsity&rdquo; distinction matters more than the
             exact K. Most likely explanation: top-K acts as implicit
             regularization, preventing the dense kid&apos;s overfitting
             documented on <Link href="/process" className="underline underline-offset-2">/process</Link>.
             One run per K, one seed — single-seed variance is unmeasured.
+          </p>
+        </div>
+
+        <div className="mb-8 rounded-xl border border-rose-200 bg-rose-50 p-5">
+          <div className="mb-1 text-sm font-medium text-rose-900">
+            But the regularization win does not scale to longer context.
+          </div>
+          <div className="mb-3 text-xs text-rose-800">
+            What happens when we run the same dense-vs-sparse comparison at
+            T=512 and T=1024? Naive top-K falls behind, and the gap grows.
+          </div>
+          <div className="space-y-1.5">
+            {T_SWEEP.map((row) => {
+              const denseWins = row.denseVal < row.sparseVal;
+              const allVals = T_SWEEP.flatMap((r) => [r.denseVal, r.sparseVal]);
+              const minVal = Math.min(...allVals);
+              const maxVal = Math.max(...allVals);
+              const range = maxVal - minVal || 1;
+              const denseW = 30 + ((maxVal - row.denseVal) / range) * 70;
+              const sparseW = 30 + ((maxVal - row.sparseVal) / range) * 70;
+              return (
+                <div key={row.t} className="space-y-0.5">
+                  <div className="text-[11px] font-mono text-zinc-600 mt-1">
+                    T = {row.t}  (sparse uses K = {row.sparseK}, ~{((row.sparseK / row.t) * 100).toFixed(1)}% sparsity)
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <span className="w-16 font-mono text-zinc-700">dense</span>
+                    <span
+                      className={`h-4 rounded ${denseWins ? "bg-emerald-500" : "bg-zinc-300"}`}
+                      style={{ width: `${denseW}%` }}
+                    />
+                    <span className="font-mono tabular-nums text-zinc-700">
+                      {row.denseVal.toFixed(3)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <span className="w-16 font-mono text-zinc-700">sparse</span>
+                    <span
+                      className={`h-4 rounded ${denseWins ? "bg-zinc-300" : "bg-emerald-500"}`}
+                      style={{ width: `${sparseW}%` }}
+                    />
+                    <span className="font-mono tabular-nums text-zinc-700">
+                      {row.sparseVal.toFixed(3)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-4 text-xs text-rose-900 leading-relaxed">
+            <strong>The story:</strong> sparse wins at T=128 by 0.05, loses at T=512 by 0.11,
+            loses at T=1024 by 0.26. The gap grows with context length.
+            <strong> Naive top-K does not scale to long context</strong> at this
+            model size — even when we keep the sparsity ratio constant (~3% of T).
+          </p>
+          <p className="mt-2 text-xs text-rose-900 leading-relaxed">
+            <strong>Why:</strong> with K positions out of T, the model has to <em>find</em> the
+            K most relevant past positions through q·k similarity. At T=128 with K=4, that
+            choice is easy. At T=1024 with K=32, the selection becomes noisy — wasted attention
+            slots compound, and the model can&apos;t recover. This is exactly why production
+            systems (NSA, Longformer, BigBird) use <strong>hybrid sparsity</strong>: top-K plus
+            sliding window plus global tokens. Pure top-K is the simplest case but not the
+            production case.
           </p>
         </div>
 
